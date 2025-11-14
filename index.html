@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur de Marges et Bénéfices</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        input[type="number"],
+        select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-group .form-group {
+            flex: 1;
+        }
+
+        .input-group select {
+            flex: 0 0 120px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .results {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item.highlight {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left-color: #764ba2;
+            border-left-width: 5px;
+        }
+
+        .result-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .result-value.positive {
+            color: #28a745;
+        }
+
+        .result-value.negative {
+            color: #dc3545;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #667eea;
+            margin: 25px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Calculateur de Marges et Bénéfices</h1>
+
+        <div class="card">
+            <form id="profitForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="purchasePrice">Prix d'achat HT (€) *</label>
+                        <input type="number" id="purchasePrice" step="0.01" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sellingPrice">Prix de vente TTC (€) *</label>
+                        <input type="number" id="sellingPrice" step="0.01" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="purchaseTva">TVA achat (%)</label>
+                        <input type="number" id="purchaseTva" step="0.01" min="0" value="20">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sellingTva">TVA vente (%)</label>
+                        <input type="number" id="sellingTva" step="0.01" min="0" value="20">
+                    </div>
+                </div>
+
+                <div class="section-title">Commissions Marketplace</div>
+                <div class="input-group">
+                    <div class="form-group">
+                        <label for="commission">Commission</label>
+                        <input type="number" id="commission" step="0.01" min="0" value="0">
+                    </div>
+                    <select id="commissionType">
+                        <option value="percentage">Pourcentage (%)</option>
+                        <option value="fixed">Montant fixe (€)</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Frais de port</div>
+                <div class="input-group">
+                    <div class="form-group">
+                        <label for="shipping">Frais de port</label>
+                        <input type="number" id="shipping" step="0.01" min="0" value="0">
+                    </div>
+                    <select id="shippingType">
+                        <option value="percentage">Pourcentage (%)</option>
+                        <option value="fixed">Montant fixe (€)</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Options de vente</div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foreignSale">
+                    <label for="foreignSale">Vente à l'étranger (UE) - Appliquer l'OSS</label>
+                </div>
+
+                <div id="ossSection" style="display: none; margin-top: 15px;">
+                    <div class="form-group">
+                        <label for="ossTva">Taux TVA du pays de destination (%)</label>
+                        <input type="number" id="ossTva" step="0.01" min="0" value="20">
+                    </div>
+                </div>
+
+                <button type="submit">Calculer les bénéfices</button>
+            </form>
+        </div>
+
+        <div class="card results" id="results">
+            <h2>Résultats détaillés</h2>
+
+            <div class="section-title">Prix et Marges</div>
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Prix de vente HT</div>
+                    <div class="result-value" id="sellingPriceHT">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Prix d'achat TTC</div>
+                    <div class="result-value" id="purchasePriceTTC">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Marge brute</div>
+                    <div class="result-value" id="grossMargin">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Taux de marge</div>
+                    <div class="result-value" id="marginRate">0.00 %</div>
+                </div>
+            </div>
+
+            <div class="section-title">TVA</div>
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">TVA encaissée</div>
+                    <div class="result-value" id="tvaCollected">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">TVA décaissée</div>
+                    <div class="result-value" id="tvaPaid">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">TVA à reverser</div>
+                    <div class="result-value" id="tvaToReturn">0.00 €</div>
+                </div>
+            </div>
+
+            <div class="section-title">Frais</div>
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Commission marketplace</div>
+                    <div class="result-value" id="commissionAmount">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Frais de port</div>
+                    <div class="result-value" id="shippingAmount">0.00 €</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Total des frais</div>
+                    <div class="result-value" id="totalFees">0.00 €</div>
+                </div>
+            </div>
+
+            <div class="section-title">Bénéfice final</div>
+            <div class="results-grid">
+                <div class="result-item highlight">
+                    <div class="result-label">Bénéfice net</div>
+                    <div class="result-value" id="netProfit">0.00 €</div>
+                </div>
+                <div class="result-item highlight">
+                    <div class="result-label">Taux de profit (%)</div>
+                    <div class="result-value" id="profitRate">0.00 %</div>
+                </div>
+            </div>
+
+            <div id="ossInfo" style="display: none;">
+                <div class="warning">
+                    <strong>⚠️ Vente à l'étranger (OSS)</strong><br>
+                    La TVA de <span id="ossAmount">0.00 €</span> doit être reversée au pays de destination via le guichet unique OSS.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('profitForm');
+        const foreignSaleCheckbox = document.getElementById('foreignSale');
+        const ossSection = document.getElementById('ossSection');
+        const resultsSection = document.getElementById('results');
+
+        // Afficher/masquer la section OSS
+        foreignSaleCheckbox.addEventListener('change', function() {
+            ossSection.style.display = this.checked ? 'block' : 'none';
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            calculateProfit();
+        });
+
+        function calculateProfit() {
+            // Récupération des valeurs
+            const purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value) || 0;
+            const purchaseTva = parseFloat(document.getElementById('purchaseTva').value) || 0;
+            const sellingTva = parseFloat(document.getElementById('sellingTva').value) || 0;
+            const commission = parseFloat(document.getElementById('commission').value) || 0;
+            const commissionType = document.getElementById('commissionType').value;
+            const shipping = parseFloat(document.getElementById('shipping').value) || 0;
+            const shippingType = document.getElementById('shippingType').value;
+            const isForeignSale = foreignSaleCheckbox.checked;
+            const ossTva = parseFloat(document.getElementById('ossTva').value) || 0;
+
+            // Calculs de base
+            const purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
+            const sellingPriceHT = sellingPrice / (1 + sellingTva / 100);
+
+            // TVA
+            let tvaCollected, tvaPaid, tvaToReturn;
+
+            if (isForeignSale) {
+                // En OSS, on collecte la TVA du pays de destination
+                tvaCollected = sellingPrice - (sellingPrice / (1 + ossTva / 100));
+                tvaPaid = purchasePrice * (purchaseTva / 100);
+                tvaToReturn = tvaCollected; // TVA à reverser au pays de destination
+            } else {
+                // Vente en France
+                tvaCollected = sellingPrice - sellingPriceHT;
+                tvaPaid = purchasePrice * (purchaseTva / 100);
+                tvaToReturn = tvaCollected - tvaPaid;
+            }
+
+            // Calcul des frais
+            let commissionAmount, shippingAmount;
+
+            if (commissionType === 'percentage') {
+                commissionAmount = sellingPrice * (commission / 100);
+            } else {
+                commissionAmount = commission;
+            }
+
+            if (shippingType === 'percentage') {
+                shippingAmount = sellingPrice * (shipping / 100);
+            } else {
+                shippingAmount = shipping;
+            }
+
+            const totalFees = commissionAmount + shippingAmount;
+
+            // Marge brute
+            const grossMargin = sellingPriceHT - purchasePrice;
+            const marginRate = purchasePrice > 0 ? (grossMargin / purchasePrice) * 100 : 0;
+
+            // Bénéfice net
+            // Prix de vente HT - Prix d'achat HT - Frais - TVA nette à reverser
+            let netProfit;
+            if (isForeignSale) {
+                // Pour l'OSS, on ne déduit pas la TVA payée car elle n'est pas récupérable de la même manière
+                netProfit = sellingPriceHT - purchasePrice - totalFees - tvaCollected;
+            } else {
+                // Vente en France : on paie le fournisseur TTC et on reverse la TVA nette
+                netProfit = sellingPriceHT - purchasePrice - totalFees - tvaToReturn;
+            }
+
+            const profitRate = sellingPrice > 0 ? (netProfit / sellingPrice) * 100 : 0;
+
+            // Affichage des résultats
+            document.getElementById('sellingPriceHT').textContent = formatCurrency(sellingPriceHT);
+            document.getElementById('purchasePriceTTC').textContent = formatCurrency(purchasePriceTTC);
+            document.getElementById('grossMargin').textContent = formatCurrency(grossMargin);
+            document.getElementById('marginRate').textContent = formatPercentage(marginRate);
+
+            document.getElementById('tvaCollected').textContent = formatCurrency(tvaCollected);
+            document.getElementById('tvaPaid').textContent = formatCurrency(tvaPaid);
+            document.getElementById('tvaToReturn').textContent = formatCurrency(tvaToReturn);
+
+            document.getElementById('commissionAmount').textContent = formatCurrency(commissionAmount);
+            document.getElementById('shippingAmount').textContent = formatCurrency(shippingAmount);
+            document.getElementById('totalFees').textContent = formatCurrency(totalFees);
+
+            const netProfitElement = document.getElementById('netProfit');
+            netProfitElement.textContent = formatCurrency(netProfit);
+            netProfitElement.className = 'result-value ' + (netProfit >= 0 ? 'positive' : 'negative');
+
+            document.getElementById('profitRate').textContent = formatPercentage(profitRate);
+
+            // Affichage de l'info OSS
+            const ossInfo = document.getElementById('ossInfo');
+            if (isForeignSale) {
+                document.getElementById('ossAmount').textContent = formatCurrency(tvaCollected);
+                ossInfo.style.display = 'block';
+            } else {
+                ossInfo.style.display = 'none';
+            }
+
+            // Afficher les résultats
+            resultsSection.style.display = 'block';
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function formatCurrency(value) {
+            return value.toFixed(2) + ' €';
+        }
+
+        function formatPercentage(value) {
+            return value.toFixed(2) + ' %';
+        }
+    </script>
+</body>
+</html>
