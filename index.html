@@ -227,6 +227,36 @@
 
         <div class="card">
             <form id="profitForm">
+                <div class="section-title" style="margin-top: 0;">Informations d'achat</div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foreignPurchase">
+                    <label for="foreignPurchase">Achat à l'étranger (UE)</label>
+                </div>
+
+                <div id="foreignPurchaseSection" style="display: none; margin-top: 15px;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="purchaseCountry">Pays d'achat</label>
+                            <select id="purchaseCountry">
+                                <option value="DE" data-tva="19">Allemagne (19%)</option>
+                                <option value="BE" data-tva="21">Belgique (21%)</option>
+                                <option value="ES" data-tva="21">Espagne (21%)</option>
+                                <option value="IT" data-tva="22">Italie (22%)</option>
+                                <option value="NL" data-tva="21">Pays-Bas (21%)</option>
+                                <option value="PL" data-tva="23">Pologne (23%)</option>
+                                <option value="OTHER" data-tva="20">Autre pays UE</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="intracomNumber">Avec numéro intracommunautaire ?</label>
+                            <select id="intracomNumber">
+                                <option value="yes">Oui - Achat HT avec autoliquidation</option>
+                                <option value="no">Non - Achat avec TVA étrangère</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="purchasePrice">Prix d'achat HT (€) *</label>
@@ -238,7 +268,7 @@
                         <input type="number" id="sellingPrice" step="0.01" min="0" required>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="purchaseTvaGroup">
                         <label for="purchaseTva">TVA achat (%)</label>
                         <input type="number" id="purchaseTva" step="0.01" min="0" value="20">
                     </div>
@@ -357,10 +387,17 @@
                 </div>
             </div>
 
-            <div id="ossInfo" style="display: none;">
+            <div id="ossSaleInfo" style="display: none;">
                 <div class="warning">
                     <strong>⚠️ Vente à l'étranger (OSS)</strong><br>
-                    La TVA de <span id="ossAmount">0.00 €</span> doit être reversée au pays de destination via le guichet unique OSS.
+                    La TVA de <span id="ossSaleAmount">0.00 €</span> doit être reversée au pays de destination via le guichet unique OSS.
+                </div>
+            </div>
+
+            <div id="foreignPurchaseInfo" style="display: none;">
+                <div class="warning" style="background: #d1ecf1; border-left-color: #17a2b8; color: #0c5460;">
+                    <strong>🌍 Achat à l'étranger</strong><br>
+                    <span id="foreignPurchaseText"></span>
                 </div>
             </div>
         </div>
@@ -369,13 +406,47 @@
     <script>
         const form = document.getElementById('profitForm');
         const foreignSaleCheckbox = document.getElementById('foreignSale');
+        const foreignPurchaseCheckbox = document.getElementById('foreignPurchase');
         const ossSection = document.getElementById('ossSection');
+        const foreignPurchaseSection = document.getElementById('foreignPurchaseSection');
         const resultsSection = document.getElementById('results');
+        const purchaseCountrySelect = document.getElementById('purchaseCountry');
+        const intracomNumberSelect = document.getElementById('intracomNumber');
+        const purchaseTvaInput = document.getElementById('purchaseTva');
 
-        // Afficher/masquer la section OSS
+        // Afficher/masquer la section OSS vente
         foreignSaleCheckbox.addEventListener('change', function() {
             ossSection.style.display = this.checked ? 'block' : 'none';
         });
+
+        // Afficher/masquer la section achat étranger
+        foreignPurchaseCheckbox.addEventListener('change', function() {
+            foreignPurchaseSection.style.display = this.checked ? 'block' : 'none';
+            updatePurchaseTva();
+        });
+
+        // Mettre à jour la TVA d'achat selon le pays et le mode
+        purchaseCountrySelect.addEventListener('change', updatePurchaseTva);
+        intracomNumberSelect.addEventListener('change', updatePurchaseTva);
+
+        function updatePurchaseTva() {
+            if (foreignPurchaseCheckbox.checked) {
+                const hasIntracom = intracomNumberSelect.value === 'yes';
+                const selectedOption = purchaseCountrySelect.options[purchaseCountrySelect.selectedIndex];
+                const foreignTva = parseFloat(selectedOption.getAttribute('data-tva'));
+
+                if (hasIntracom) {
+                    // Avec numéro intracommunautaire : autoliquidation (TVA française)
+                    purchaseTvaInput.value = '20';
+                } else {
+                    // Sans numéro intracommunautaire : TVA du pays étranger
+                    purchaseTvaInput.value = foreignTva;
+                }
+            } else {
+                // Achat en France
+                purchaseTvaInput.value = '20';
+            }
+        }
 
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -393,24 +464,41 @@
             const shipping = parseFloat(document.getElementById('shipping').value) || 0;
             const shippingType = document.getElementById('shippingType').value;
             const isForeignSale = foreignSaleCheckbox.checked;
+            const isForeignPurchase = foreignPurchaseCheckbox.checked;
             const ossTva = parseFloat(document.getElementById('ossTva').value) || 0;
+            const hasIntracom = intracomNumberSelect.value === 'yes';
+            const purchaseCountry = purchaseCountrySelect.options[purchaseCountrySelect.selectedIndex].text;
 
             // Calculs de base
-            const purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
+            let purchasePriceTTC, tvaPaid;
             const sellingPriceHT = sellingPrice / (1 + sellingTva / 100);
 
-            // TVA
-            let tvaCollected, tvaPaid, tvaToReturn;
+            // TVA d'achat selon le type d'achat
+            if (isForeignPurchase && hasIntracom) {
+                // Achat avec numéro intracommunautaire : Autoliquidation
+                // On achète HT, puis on autoliquide la TVA française (20%)
+                purchasePriceTTC = purchasePrice * (1 + 0.20); // TVA française
+                tvaPaid = purchasePrice * 0.20; // TVA autoliquidée (déductible)
+            } else if (isForeignPurchase && !hasIntracom) {
+                // Achat sans numéro intracommunautaire : TVA étrangère payée
+                purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
+                tvaPaid = 0; // TVA étrangère non déductible
+            } else {
+                // Achat en France
+                purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
+                tvaPaid = purchasePrice * (purchaseTva / 100);
+            }
+
+            // TVA de vente
+            let tvaCollected, tvaToReturn;
 
             if (isForeignSale) {
                 // En OSS, on collecte la TVA du pays de destination
                 tvaCollected = sellingPrice - (sellingPrice / (1 + ossTva / 100));
-                tvaPaid = purchasePrice * (purchaseTva / 100);
                 tvaToReturn = tvaCollected; // TVA à reverser au pays de destination
             } else {
                 // Vente en France
                 tvaCollected = sellingPrice - sellingPriceHT;
-                tvaPaid = purchasePrice * (purchaseTva / 100);
                 tvaToReturn = tvaCollected - tvaPaid;
             }
 
@@ -468,13 +556,37 @@
 
             document.getElementById('profitRate').textContent = formatPercentage(profitRate);
 
-            // Affichage de l'info OSS
-            const ossInfo = document.getElementById('ossInfo');
+            // Affichage de l'info OSS vente
+            const ossSaleInfo = document.getElementById('ossSaleInfo');
             if (isForeignSale) {
-                document.getElementById('ossAmount').textContent = formatCurrency(tvaCollected);
-                ossInfo.style.display = 'block';
+                document.getElementById('ossSaleAmount').textContent = formatCurrency(tvaCollected);
+                ossSaleInfo.style.display = 'block';
             } else {
-                ossInfo.style.display = 'none';
+                ossSaleInfo.style.display = 'none';
+            }
+
+            // Affichage de l'info achat étranger
+            const foreignPurchaseInfo = document.getElementById('foreignPurchaseInfo');
+            const foreignPurchaseText = document.getElementById('foreignPurchaseText');
+            if (isForeignPurchase) {
+                if (hasIntracom) {
+                    foreignPurchaseText.innerHTML = `
+                        <strong>Achat en ${purchaseCountry} avec numéro intracommunautaire</strong><br>
+                        • Vous achetez HT (pas de TVA payée au fournisseur)<br>
+                        • Autoliquidation de la TVA française à déclarer : ${formatCurrency(tvaPaid)}<br>
+                        • Cette TVA est déductible sur votre déclaration de TVA
+                    `;
+                } else {
+                    foreignPurchaseText.innerHTML = `
+                        <strong>Achat en ${purchaseCountry} sans numéro intracommunautaire</strong><br>
+                        • TVA du pays étranger (${purchaseTva}%) payée : ${formatCurrency(purchasePriceTTC - purchasePrice)}<br>
+                        • ⚠️ Cette TVA étrangère n'est PAS déductible sur votre déclaration française<br>
+                        • Elle constitue un coût supplémentaire pour votre entreprise
+                    `;
+                }
+                foreignPurchaseInfo.style.display = 'block';
+            } else {
+                foreignPurchaseInfo.style.display = 'none';
             }
 
             // Afficher les résultats
