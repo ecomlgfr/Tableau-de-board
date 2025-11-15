@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculateur de Marges et Bénéfices</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -76,6 +77,21 @@
             margin-bottom: 20px;
         }
 
+        .purchase-section {
+            background: #fff9e6;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffc107;
+            margin-bottom: 30px;
+        }
+
+        .sales-section {
+            background: #e6f7ff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #17a2b8;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -120,10 +136,6 @@
 
         .input-group .form-group {
             flex: 1;
-        }
-
-        .input-group select {
-            flex: 0 0 120px;
         }
 
         .checkbox-group {
@@ -315,6 +327,26 @@
             color: #667eea;
         }
 
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .chart-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .chart-box h3 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 1.8em;
@@ -348,99 +380,102 @@
 
         <div class="tabs">
             <button class="tab active" onclick="switchTab('manual')">Calculateur manuel</button>
-            <button class="tab" onclick="switchTab('import')">Import fichiers CSV</button>
+            <button class="tab" onclick="switchTab('import')">Import fichiers</button>
         </div>
 
         <!-- TAB 1: Calculateur manuel -->
         <div id="tab-manual" class="tab-content active">
             <div class="card">
                 <form id="profitForm">
-                    <div class="section-title" style="margin-top: 0;">Informations d'achat</div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="foreignPurchase">
-                        <label for="foreignPurchase">Achat à l'étranger (UE)</label>
-                    </div>
+                    <!-- SECTION ACHATS -->
+                    <div class="purchase-section">
+                        <h3 style="color: #856404; margin-bottom: 20px;">📦 INFORMATIONS D'ACHAT</h3>
 
-                    <div id="foreignPurchaseSection" style="display: none; margin-top: 15px;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="foreignPurchase">
+                            <label for="foreignPurchase">Achat à l'étranger (UE)</label>
+                        </div>
+
+                        <div id="foreignPurchaseSection" style="display: none; margin-top: 15px;">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="purchaseCountry">Pays d'achat</label>
+                                    <select id="purchaseCountry">
+                                        <option value="DE" data-tva="19">Allemagne (19%)</option>
+                                        <option value="BE" data-tva="21">Belgique (21%)</option>
+                                        <option value="ES" data-tva="21">Espagne (21%)</option>
+                                        <option value="IT" data-tva="22">Italie (22%)</option>
+                                        <option value="NL" data-tva="21">Pays-Bas (21%)</option>
+                                        <option value="PL" data-tva="23">Pologne (23%)</option>
+                                        <option value="OTHER" data-tva="20">Autre pays UE</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="intracomNumber">Avec numéro intracommunautaire ?</label>
+                                    <select id="intracomNumber">
+                                        <option value="yes">Oui - Achat HT avec autoliquidation</option>
+                                        <option value="no">Non - Achat avec TVA étrangère</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="purchaseCountry">Pays d'achat</label>
-                                <select id="purchaseCountry">
-                                    <option value="DE" data-tva="19">Allemagne (19%)</option>
-                                    <option value="BE" data-tva="21">Belgique (21%)</option>
-                                    <option value="ES" data-tva="21">Espagne (21%)</option>
-                                    <option value="IT" data-tva="22">Italie (22%)</option>
-                                    <option value="NL" data-tva="21">Pays-Bas (21%)</option>
-                                    <option value="PL" data-tva="23">Pologne (23%)</option>
-                                    <option value="OTHER" data-tva="20">Autre pays UE</option>
-                                </select>
+                                <label for="purchasePrice">Prix d'achat HT (€) *</label>
+                                <input type="number" id="purchasePrice" step="0.01" min="0" required>
                             </div>
+
+                            <div class="form-group" id="purchaseTvaGroup">
+                                <label for="purchaseTva">TVA achat (%)</label>
+                                <input type="number" id="purchaseTva" step="0.01" min="0" value="20">
+                            </div>
+
                             <div class="form-group">
-                                <label for="intracomNumber">Avec numéro intracommunautaire ?</label>
-                                <select id="intracomNumber">
-                                    <option value="yes">Oui - Achat HT avec autoliquidation</option>
-                                    <option value="no">Non - Achat avec TVA étrangère</option>
-                                </select>
+                                <label for="purchaseShipping">Frais de port d'achat (€)</label>
+                                <input type="number" id="purchaseShipping" step="0.01" min="0" value="0">
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="purchasePrice">Prix d'achat HT (€) *</label>
-                            <input type="number" id="purchasePrice" step="0.01" min="0" required>
+                    <!-- SECTION VENTES -->
+                    <div class="sales-section">
+                        <h3 style="color: #0c5460; margin-bottom: 20px;">🛒 INFORMATIONS DE VENTE</h3>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="foreignSale">
+                            <label for="foreignSale">Vente à l'étranger (UE) - Appliquer l'OSS</label>
                         </div>
 
-                        <div class="form-group">
-                            <label for="sellingPrice">Prix de vente TTC (€) *</label>
-                            <input type="number" id="sellingPrice" step="0.01" min="0" required>
+                        <div id="ossSection" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="ossTva">Taux TVA du pays de destination (%)</label>
+                                <input type="number" id="ossTva" step="0.01" min="0" value="20">
+                            </div>
                         </div>
 
-                        <div class="form-group" id="purchaseTvaGroup">
-                            <label for="purchaseTva">TVA achat (%)</label>
-                            <input type="number" id="purchaseTva" step="0.01" min="0" value="20">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="sellingPrice">Prix de vente TTC (€) *</label>
+                                <input type="number" id="sellingPrice" step="0.01" min="0" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sellingTva">TVA vente (%)</label>
+                                <input type="number" id="sellingTva" step="0.01" min="0" value="20">
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="sellingTva">TVA vente (%)</label>
-                            <input type="number" id="sellingTva" step="0.01" min="0" value="20">
-                        </div>
-                    </div>
+                        <div class="section-title" style="margin-top: 20px;">Frais de vente</div>
 
-                    <div class="section-title">Commissions Marketplace</div>
-                    <div class="input-group">
                         <div class="form-group">
-                            <label for="commission">Commission</label>
+                            <label for="commission">Commission marketplace (€)</label>
                             <input type="number" id="commission" step="0.01" min="0" value="0">
                         </div>
-                        <select id="commissionType">
-                            <option value="percentage">Pourcentage (%)</option>
-                            <option value="fixed">Montant fixe (€)</option>
-                        </select>
-                    </div>
 
-                    <div class="section-title">Frais de port</div>
-                    <div class="input-group">
                         <div class="form-group">
-                            <label for="shipping">Frais de port</label>
+                            <label for="shipping">Frais de port de vente (€)</label>
                             <input type="number" id="shipping" step="0.01" min="0" value="0">
-                        </div>
-                        <select id="shippingType">
-                            <option value="percentage">Pourcentage (%)</option>
-                            <option value="fixed">Montant fixe (€)</option>
-                        </select>
-                    </div>
-
-                    <div class="section-title">Options de vente</div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="foreignSale">
-                        <label for="foreignSale">Vente à l'étranger (UE) - Appliquer l'OSS</label>
-                    </div>
-
-                    <div id="ossSection" style="display: none; margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="ossTva">Taux TVA du pays de destination (%)</label>
-                            <input type="number" id="ossTva" step="0.01" min="0" value="20">
                         </div>
                     </div>
 
@@ -531,13 +566,13 @@
             </div>
         </div>
 
-        <!-- TAB 2: Import fichiers CSV -->
+        <!-- TAB 2: Import fichiers -->
         <div id="tab-import" class="tab-content">
             <div class="card">
                 <div class="info">
                     <strong>ℹ️ Instructions d'import</strong><br>
-                    1. Importez d'abord votre fichier d'achats au format Excel (.xlsx)<br>
-                    2. Ensuite, importez un ou plusieurs fichiers de ventes Amazon (CSV)<br>
+                    1. Importez votre fichier d'achats au format Excel (.xlsx)<br>
+                    2. Importez un ou plusieurs fichiers de ventes Amazon (CSV) - Tous pays : FR, DE, ES, IT, NL, BE, PT<br>
                     3. Le système cherchera automatiquement les ventes correspondantes à chaque achat
                 </div>
 
@@ -550,7 +585,7 @@
                     <p id="purchaseFileName" style="margin-top: 10px; color: #666;"></p>
                 </div>
 
-                <div class="section-title">🛒 Fichiers de ventes Amazon (CSV)</div>
+                <div class="section-title">🛒 Fichiers de ventes Amazon (CSV - Tous pays)</div>
                 <div class="file-upload-area">
                     <input type="file" id="salesFiles" accept=".csv,.txt" multiple style="display: none;">
                     <button onclick="document.getElementById('salesFiles').click()" style="width: auto; padding: 10px 30px;">
@@ -574,6 +609,7 @@
                                 <th>Réf Commande</th>
                                 <th>Montant HT</th>
                                 <th>Frais Port HT</th>
+                                <th>Taxe routière</th>
                                 <th>Total HT</th>
                             </tr>
                         </thead>
@@ -587,6 +623,7 @@
                         <thead>
                             <tr>
                                 <th>Réf Commande</th>
+                                <th>Pays</th>
                                 <th>Vente HT</th>
                                 <th>Commission TTC</th>
                                 <th>TVA Vente</th>
@@ -600,37 +637,73 @@
             <div class="card results" id="importResults" style="display: none;">
                 <h2>📊 Résultats de l'analyse</h2>
 
-                <div class="summary-card">
-                    <h3 style="margin-bottom: 20px; color: #667eea;">Résumé global</h3>
+                <!-- Résumé TOUS LES ACHATS -->
+                <div class="summary-card" style="background: #fff3cd;">
+                    <h3 style="margin-bottom: 20px; color: #856404;">📦 Résumé global - TOUS LES ACHATS</h3>
                     <div class="summary-grid">
                         <div class="summary-item">
-                            <div class="label">Achats traités</div>
-                            <div class="value" id="totalPurchaseOrders">0</div>
+                            <div class="label">Achats totaux</div>
+                            <div class="value" style="color: #856404;" id="totalPurchaseOrders">0</div>
                         </div>
+                        <div class="summary-item">
+                            <div class="label">Achats vendus</div>
+                            <div class="value" style="color: #28a745;" id="totalSoldOrders">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Achats non vendus</div>
+                            <div class="value" style="color: #dc3545;" id="totalUnsoldOrders">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Coût total achats</div>
+                            <div class="value" style="color: #856404;" id="totalPurchaseCost">0.00 €</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Résumé VENTES UNIQUEMENT -->
+                <div class="summary-card" style="background: #d1ecf1; margin-top: 20px;">
+                    <h3 style="margin-bottom: 20px; color: #0c5460;">🛒 Résumé global - VENTES TROUVÉES UNIQUEMENT</h3>
+                    <div class="summary-grid">
                         <div class="summary-item">
                             <div class="label">Ventes trouvées</div>
-                            <div class="value" id="totalOrders">0</div>
+                            <div class="value" style="color: #0c5460;" id="totalOrders">0</div>
                         </div>
                         <div class="summary-item">
-                            <div class="label">Chiffre d'affaires HT</div>
-                            <div class="value" id="totalRevenue">0.00 €</div>
+                            <div class="label">CA HT total</div>
+                            <div class="value" style="color: #0c5460;" id="totalRevenue">0.00 €</div>
                         </div>
                         <div class="summary-item">
-                            <div class="label">Coût d'achat total</div>
-                            <div class="value" id="totalPurchase">0.00 €</div>
+                            <div class="label">Coût achats vendus</div>
+                            <div class="value" style="color: #0c5460;" id="totalPurchase">0.00 €</div>
                         </div>
                         <div class="summary-item">
-                            <div class="label">Bénéfice net total</div>
+                            <div class="label">Bénéfice net</div>
                             <div class="value positive" id="totalProfit">0.00 €</div>
                         </div>
                         <div class="summary-item">
                             <div class="label">TVA à reverser (FR)</div>
-                            <div class="value" id="totalTvaToReturn">0.00 €</div>
+                            <div class="value" style="color: #0c5460;" id="totalTvaToReturn">0.00 €</div>
                         </div>
                         <div class="summary-item">
-                            <div class="label">Commissions Amazon</div>
-                            <div class="value" id="totalCommissions">0.00 €</div>
+                            <div class="label">Commissions totales</div>
+                            <div class="value" style="color: #0c5460;" id="totalCommissions">0.00 €</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Graphiques -->
+                <div class="charts-container">
+                    <div class="chart-box">
+                        <h3>Répartition des achats</h3>
+                        <canvas id="purchasesChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Répartition par pays</h3>
+                        <canvas id="countriesChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Bénéfices vs Pertes</h3>
+                        <canvas id="profitsChart"></canvas>
                     </div>
                 </div>
 
@@ -644,6 +717,7 @@
                                 <th>N° Commande</th>
                                 <th>Achat HT</th>
                                 <th>Frais Port HT</th>
+                                <th>Taxe routière</th>
                                 <th>Total Achat HT</th>
                                 <th>TVA Autoliquidée</th>
                                 <th>Statut Vente</th>
@@ -662,6 +736,7 @@
                         <thead>
                             <tr>
                                 <th>N° Commande</th>
+                                <th>Pays</th>
                                 <th>Achat HT</th>
                                 <th>Vente HT</th>
                                 <th>Commission TTC</th>
@@ -682,7 +757,6 @@
     <script>
         // ==================== TAB SWITCHING ====================
         function switchTab(tabName) {
-            // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -690,7 +764,6 @@
                 tab.classList.remove('active');
             });
 
-            // Show selected tab
             document.getElementById('tab-' + tabName).classList.add('active');
             event.target.classList.add('active');
         }
@@ -706,18 +779,15 @@
         const intracomNumberSelect = document.getElementById('intracomNumber');
         const purchaseTvaInput = document.getElementById('purchaseTva');
 
-        // Afficher/masquer la section OSS vente
         foreignSaleCheckbox.addEventListener('change', function() {
             ossSection.style.display = this.checked ? 'block' : 'none';
         });
 
-        // Afficher/masquer la section achat étranger
         foreignPurchaseCheckbox.addEventListener('change', function() {
             foreignPurchaseSection.style.display = this.checked ? 'block' : 'none';
             updatePurchaseTva();
         });
 
-        // Mettre à jour la TVA d'achat selon le pays et le mode
         purchaseCountrySelect.addEventListener('change', updatePurchaseTva);
         intracomNumberSelect.addEventListener('change', updatePurchaseTva);
 
@@ -748,9 +818,8 @@
             const purchaseTva = parseFloat(document.getElementById('purchaseTva').value) || 0;
             const sellingTva = parseFloat(document.getElementById('sellingTva').value) || 0;
             const commission = parseFloat(document.getElementById('commission').value) || 0;
-            const commissionType = document.getElementById('commissionType').value;
             const shipping = parseFloat(document.getElementById('shipping').value) || 0;
-            const shippingType = document.getElementById('shippingType').value;
+            const purchaseShipping = parseFloat(document.getElementById('purchaseShipping').value) || 0;
             const isForeignSale = foreignSaleCheckbox.checked;
             const isForeignPurchase = foreignPurchaseCheckbox.checked;
             const ossTva = parseFloat(document.getElementById('ossTva').value) || 0;
@@ -761,14 +830,14 @@
             const sellingPriceHT = sellingPrice / (1 + sellingTva / 100);
 
             if (isForeignPurchase && hasIntracom) {
-                purchasePriceTTC = purchasePrice * (1 + 0.20);
-                tvaPaid = purchasePrice * 0.20;
+                purchasePriceTTC = (purchasePrice + purchaseShipping) * (1 + 0.20);
+                tvaPaid = (purchasePrice + purchaseShipping) * 0.20;
             } else if (isForeignPurchase && !hasIntracom) {
-                purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
+                purchasePriceTTC = (purchasePrice + purchaseShipping) * (1 + purchaseTva / 100);
                 tvaPaid = 0;
             } else {
-                purchasePriceTTC = purchasePrice * (1 + purchaseTva / 100);
-                tvaPaid = purchasePrice * (purchaseTva / 100);
+                purchasePriceTTC = (purchasePrice + purchaseShipping) * (1 + purchaseTva / 100);
+                tvaPaid = (purchasePrice + purchaseShipping) * (purchaseTva / 100);
             }
 
             let tvaCollected, tvaToReturn;
@@ -781,29 +850,15 @@
                 tvaToReturn = tvaCollected - tvaPaid;
             }
 
-            let commissionAmount, shippingAmount;
-
-            if (commissionType === 'percentage') {
-                commissionAmount = sellingPrice * (commission / 100);
-            } else {
-                commissionAmount = commission;
-            }
-
-            if (shippingType === 'percentage') {
-                shippingAmount = sellingPrice * (shipping / 100);
-            } else {
-                shippingAmount = shipping;
-            }
-
-            const totalFees = commissionAmount + shippingAmount;
-            const grossMargin = sellingPriceHT - purchasePrice;
-            const marginRate = purchasePrice > 0 ? (grossMargin / purchasePrice) * 100 : 0;
+            const totalFees = commission + shipping;
+            const grossMargin = sellingPriceHT - purchasePrice - purchaseShipping;
+            const marginRate = (purchasePrice + purchaseShipping) > 0 ? (grossMargin / (purchasePrice + purchaseShipping)) * 100 : 0;
 
             let netProfit;
             if (isForeignSale) {
-                netProfit = sellingPriceHT - purchasePrice - totalFees - tvaCollected;
+                netProfit = sellingPriceHT - purchasePrice - purchaseShipping - totalFees - tvaCollected;
             } else {
-                netProfit = sellingPriceHT - purchasePrice - totalFees - tvaToReturn;
+                netProfit = sellingPriceHT - purchasePrice - purchaseShipping - totalFees - tvaToReturn;
             }
 
             const profitRate = sellingPrice > 0 ? (netProfit / sellingPrice) * 100 : 0;
@@ -817,8 +872,8 @@
             document.getElementById('tvaPaid').textContent = formatCurrency(tvaPaid);
             document.getElementById('tvaToReturn').textContent = formatCurrency(tvaToReturn);
 
-            document.getElementById('commissionAmount').textContent = formatCurrency(commissionAmount);
-            document.getElementById('shippingAmount').textContent = formatCurrency(shippingAmount);
+            document.getElementById('commissionAmount').textContent = formatCurrency(commission);
+            document.getElementById('shippingAmount').textContent = formatCurrency(shipping);
             document.getElementById('totalFees').textContent = formatCurrency(totalFees);
 
             const netProfitElement = document.getElementById('netProfit');
@@ -848,7 +903,7 @@
                 } else {
                     foreignPurchaseText.innerHTML = `
                         <strong>Achat en ${purchaseCountry} sans numéro intracommunautaire</strong><br>
-                        • TVA du pays étranger (${purchaseTva}%) payée : ${formatCurrency(purchasePriceTTC - purchasePrice)}<br>
+                        • TVA du pays étranger (${purchaseTva}%) payée : ${formatCurrency(purchasePriceTTC - purchasePrice - purchaseShipping)}<br>
                         • ⚠️ Cette TVA étrangère n'est PAS déductible sur votre déclaration française<br>
                         • Elle constitue un coût supplémentaire pour votre entreprise
                     `;
@@ -865,6 +920,17 @@
         // ==================== FILE IMPORT ====================
         let purchasesData = [];
         let salesData = [];
+        let chartsInstances = {};
+
+        const countryMap = {
+            'FR': 'France',
+            'DE': 'Allemagne',
+            'ES': 'Espagne',
+            'IT': 'Italie',
+            'NL': 'Pays-Bas',
+            'BE': 'Belgique',
+            'PT': 'Portugal'
+        };
 
         document.getElementById('purchaseFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -889,11 +955,8 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
 
-                // Lire la première feuille
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-
-                // Convertir en JSON
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
                 parsePurchaseExcel(jsonData);
@@ -907,10 +970,21 @@
             let filesProcessed = 0;
 
             Array.from(files).forEach(file => {
+                const fileName = file.name.toUpperCase();
+                let countryCode = 'FR';
+
+                // Détecter le pays depuis le nom du fichier
+                for (const code in countryMap) {
+                    if (fileName.includes(code)) {
+                        countryCode = code;
+                        break;
+                    }
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const content = e.target.result;
-                    parseSalesCSV(content);
+                    parseSalesCSV(content, countryCode);
                     filesProcessed++;
 
                     if (filesProcessed === files.length) {
@@ -925,31 +999,29 @@
         function parsePurchaseExcel(data) {
             purchasesData = [];
 
-            // Sauter la ligne d'en-tête (index 0)
             for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row || row.length < 11) continue;
 
-                // Colonne F (index 5) = Montant d'origine
-                // Colonne J (index 9) = Réf CDE client
                 const montantOrigine = parseFloat(row[5]) || 0;
                 const refCdeClient = row[9] ? String(row[9]).trim() : '';
 
                 if (refCdeClient && montantOrigine > 0) {
-                    // Soustraire 11€ HT de frais de port
-                    const prixAchatHT = montantOrigine - 11;
+                    // Soustraire 11€ de frais de port + 1€ de taxe routière = 12€
+                    const prixAchatHT = montantOrigine - 12;
 
                     purchasesData.push({
                         refCommande: refCdeClient,
                         prixAchatHT: prixAchatHT,
-                        fraisPortHT: 11
+                        fraisPortHT: 11,
+                        taxeRoutiere: 1
                     });
                 }
             }
             console.log('Achats chargés:', purchasesData.length);
         }
 
-        function parseSalesCSV(content) {
+        function parseSalesCSV(content, countryCode) {
             const lines = content.split('\n');
 
             for (let i = 1; i < lines.length; i++) {
@@ -959,14 +1031,9 @@
                 const columns = parseCSVLine(line);
                 if (columns.length < 10) continue;
 
-                // Colonne C (index 2) = Type de transaction
                 const typeTransaction = columns[2].trim();
                 if (typeTransaction !== 'Paiement de la commande') continue;
 
-                // Colonne D (index 3) = Numéro de commande
-                // Colonne F (index 5) = Total des frais produit (HT)
-                // Colonne H (index 7) = Commissions Amazon (TTC)
-                // Colonne I (index 8) = TVA
                 const numCommande = columns[3].trim();
                 const totalFraisProduitHT = parseFloat(columns[5].replace(',', '.')) || 0;
                 const commissionTTC = Math.abs(parseFloat(columns[7].replace(',', '.')) || 0);
@@ -977,7 +1044,8 @@
                         refCommande: numCommande,
                         venteHT: totalFraisProduitHT,
                         commissionTTC: commissionTTC,
-                        tvaVente: tvaVente
+                        tvaVente: tvaVente,
+                        country: countryCode
                     });
                 }
             }
@@ -986,10 +1054,8 @@
         function showPreview() {
             if (purchasesData.length === 0) return;
 
-            // Afficher la section de prévisualisation
             document.getElementById('previewSection').style.display = 'block';
 
-            // Prévisualisation des achats (5 premières lignes)
             const purchasePreviewBody = document.getElementById('purchasePreviewBody');
             purchasePreviewBody.innerHTML = '';
 
@@ -1000,11 +1066,11 @@
                     <td>${purchase.refCommande}</td>
                     <td>${formatCurrency(purchase.prixAchatHT)}</td>
                     <td>${formatCurrency(purchase.fraisPortHT)}</td>
-                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT)}</td>
+                    <td>${formatCurrency(purchase.taxeRoutiere)}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT + purchase.taxeRoutiere)}</td>
                 `;
             }
 
-            // Prévisualisation des ventes trouvées correspondantes
             const salesPreviewBody = document.getElementById('salesPreviewBody');
             salesPreviewBody.innerHTML = '';
 
@@ -1015,6 +1081,7 @@
                     const row = salesPreviewBody.insertRow();
                     row.innerHTML = `
                         <td>${sale.refCommande}</td>
+                        <td>${countryMap[sale.country] || sale.country}</td>
                         <td>${formatCurrency(sale.venteHT)}</td>
                         <td>${formatCurrency(sale.commissionTTC)}</td>
                         <td>${formatCurrency(sale.tvaVente)}</td>
@@ -1025,7 +1092,7 @@
 
             if (foundCount === 0) {
                 const row = salesPreviewBody.insertRow();
-                row.innerHTML = '<td colspan="4" style="text-align: center; color: #dc3545;">Aucune vente correspondante trouvée dans les 5 premières commandes</td>';
+                row.innerHTML = '<td colspan="5" style="text-align: center; color: #dc3545;">Aucune vente correspondante trouvée dans les 5 premières commandes</td>';
             }
 
             document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1069,43 +1136,56 @@
             let totalProfitSum = 0;
             let totalTvaToReturnSum = 0;
             let totalCommissionsSum = 0;
+            let profitsCount = 0;
+            let lossesCount = 0;
+            let profitsSum = 0;
+            let lossesSum = 0;
+            const countriesStats = {};
 
             // PARTIR DES ACHATS et chercher les ventes correspondantes
             for (const purchase of purchasesData) {
                 const sale = salesData.find(s => s.refCommande === purchase.refCommande);
 
                 if (sale) {
-                    // Calculs pour achat en Allemagne avec numéro intracommunautaire
                     const achatHT = purchase.prixAchatHT;
                     const fraisPortHT = purchase.fraisPortHT;
+                    const taxeRoutiere = purchase.taxeRoutiere;
                     const venteHT = sale.venteHT;
                     const commissionTTC = sale.commissionTTC;
                     const tvaVente = sale.tvaVente;
 
-                    // TVA sur la commission (20%)
                     const commissionHT = commissionTTC / 1.20;
                     const tvaCommission = commissionTTC - commissionHT;
 
-                    // Achat intracom : autoliquidation de la TVA
-                    const tvaAutoliquidee = achatHT * 0.20; // TVA collectée ET déductible
-                    const tvaPortAutoliquidee = fraisPortHT * 0.20; // TVA sur les frais de port
-
-                    // TVA totale déductible
-                    const tvaDeductible = tvaAutoliquidee + tvaPortAutoliquidee;
-
-                    // TVA encaissée (vente)
+                    const tvaAutoliquidee = (achatHT + fraisPortHT + taxeRoutiere) * 0.20;
+                    const tvaDeductible = tvaAutoliquidee;
                     const tvaEncaissee = tvaVente;
-
-                    // TVA à reverser = TVA encaissée - TVA déductible
                     const tvaAReverser = tvaEncaissee - tvaDeductible;
 
-                    // Bénéfice net = Vente HT - Achat HT - Frais port HT - Commission HT - TVA commission - TVA à reverser
-                    const beneficeNet = venteHT - achatHT - fraisPortHT - commissionHT - tvaCommission - tvaAReverser;
+                    const beneficeNet = venteHT - achatHT - fraisPortHT - taxeRoutiere - commissionHT - tvaCommission - tvaAReverser;
+
+                    // Stats pays
+                    const country = sale.country;
+                    if (!countriesStats[country]) {
+                        countriesStats[country] = 0;
+                    }
+                    countriesStats[country]++;
+
+                    // Stats profits/pertes
+                    if (beneficeNet >= 0) {
+                        profitsCount++;
+                        profitsSum += beneficeNet;
+                    } else {
+                        lossesCount++;
+                        lossesSum += Math.abs(beneficeNet);
+                    }
 
                     matchedOrders.push({
                         refCommande: sale.refCommande,
+                        country: sale.country,
                         achatHT: achatHT,
                         fraisPortHT: fraisPortHT,
+                        taxeRoutiere: taxeRoutiere,
                         venteHT: venteHT,
                         commissionTTC: commissionTTC,
                         commissionHT: commissionHT,
@@ -1113,20 +1193,29 @@
                         tvaEncaissee: tvaEncaissee,
                         tvaDeductible: tvaDeductible,
                         tvaAReverser: tvaAReverser,
-                        beneficeNet: beneficeNet,
-                        hasVente: true
+                        beneficeNet: beneficeNet
                     });
 
                     totalRevenueSum += venteHT;
-                    totalPurchaseSum += achatHT + fraisPortHT;
+                    totalPurchaseSum += achatHT + fraisPortHT + taxeRoutiere;
                     totalProfitSum += beneficeNet;
                     totalTvaToReturnSum += tvaAReverser;
                     totalCommissionsSum += commissionTTC;
                 }
             }
 
-            // Affichage des résultats
+            // Calcul coût total de TOUS les achats
+            const totalAllPurchasesCost = purchasesData.reduce((sum, p) =>
+                sum + p.prixAchatHT + p.fraisPortHT + p.taxeRoutiere, 0
+            );
+
+            // Affichage TOUS LES ACHATS
             document.getElementById('totalPurchaseOrders').textContent = purchasesData.length;
+            document.getElementById('totalSoldOrders').textContent = matchedOrders.length;
+            document.getElementById('totalUnsoldOrders').textContent = purchasesData.length - matchedOrders.length;
+            document.getElementById('totalPurchaseCost').textContent = formatCurrency(totalAllPurchasesCost);
+
+            // Affichage VENTES UNIQUEMENT
             document.getElementById('totalOrders').textContent = matchedOrders.length;
             document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenueSum);
             document.getElementById('totalPurchase').textContent = formatCurrency(totalPurchaseSum);
@@ -1135,20 +1224,24 @@
             document.getElementById('totalTvaToReturn').textContent = formatCurrency(totalTvaToReturnSum);
             document.getElementById('totalCommissions').textContent = formatCurrency(totalCommissionsSum);
 
+            // GRAPHIQUES
+            createCharts(purchasesData.length, matchedOrders.length, countriesStats, profitsCount, lossesCount, profitsSum, lossesSum);
+
             // TABLEAU DES ACHATS
             const purchasesBody = document.getElementById('purchasesDetailsBody');
             purchasesBody.innerHTML = '';
 
             for (const purchase of purchasesData) {
                 const sale = salesData.find(s => s.refCommande === purchase.refCommande);
-                const tvaAutoliquidee = (purchase.prixAchatHT + purchase.fraisPortHT) * 0.20;
+                const tvaAutoliquidee = (purchase.prixAchatHT + purchase.fraisPortHT + purchase.taxeRoutiere) * 0.20;
 
                 const row = purchasesBody.insertRow();
                 row.innerHTML = `
                     <td>${purchase.refCommande}</td>
                     <td>${formatCurrency(purchase.prixAchatHT)}</td>
                     <td>${formatCurrency(purchase.fraisPortHT)}</td>
-                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT)}</td>
+                    <td>${formatCurrency(purchase.taxeRoutiere)}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT + purchase.taxeRoutiere)}</td>
                     <td>${formatCurrency(tvaAutoliquidee)}</td>
                     <td style="font-weight: 600; color: ${sale ? '#28a745' : '#dc3545'};">
                         ${sale ? '✓ Vendue' : '✗ Non vendue'}
@@ -1156,7 +1249,7 @@
                 `;
             }
 
-            // TABLEAU DES VENTES (seulement les vendues)
+            // TABLEAU DES VENTES
             const salesBody = document.getElementById('salesDetailsBody');
             salesBody.innerHTML = '';
 
@@ -1164,13 +1257,14 @@
                 const row = salesBody.insertRow();
                 row.innerHTML = `
                     <td>${order.refCommande}</td>
-                    <td>${formatCurrency(order.achatHT + order.fraisPortHT)}</td>
+                    <td>${countryMap[order.country] || order.country}</td>
+                    <td>${formatCurrency(order.achatHT + order.fraisPortHT + order.taxeRoutiere)}</td>
                     <td>${formatCurrency(order.venteHT)}</td>
                     <td>${formatCurrency(order.commissionTTC)}</td>
                     <td>${formatCurrency(order.tvaEncaissee)}</td>
                     <td>${formatCurrency(order.tvaDeductible)}</td>
                     <td>${formatCurrency(order.tvaAReverser)}</td>
-                    <td style="color: ${order.beneficeNet >= 0 ? '#28a745' : '#dc3545'}; font-weight: 600;">
+                    <td style="color: ${order.beneficeNet >= 0 ? '#28a745' : '#dc3545'}; font-weight: 700;">
                         ${formatCurrency(order.beneficeNet)}
                     </td>
                 `;
@@ -1178,6 +1272,72 @@
 
             document.getElementById('importResults').style.display = 'block';
             document.getElementById('importResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function createCharts(totalPurchases, totalSales, countriesStats, profitsCount, lossesCount, profitsSum, lossesSum) {
+            // Destroy existing charts
+            Object.values(chartsInstances).forEach(chart => chart.destroy());
+            chartsInstances = {};
+
+            // Chart 1: Achats vendus/non vendus
+            const ctx1 = document.getElementById('purchasesChart').getContext('2d');
+            chartsInstances.purchases = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Vendus', 'Non vendus'],
+                    datasets: [{
+                        data: [totalSales, totalPurchases - totalSales],
+                        backgroundColor: ['#28a745', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+
+            // Chart 2: Répartition par pays
+            const ctx2 = document.getElementById('countriesChart').getContext('2d');
+            const countriesLabels = Object.keys(countriesStats).map(code => countryMap[code] || code);
+            const countriesData = Object.values(countriesStats);
+
+            chartsInstances.countries = new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: countriesLabels,
+                    datasets: [{
+                        data: countriesData,
+                        backgroundColor: [
+                            '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                            '#43e97b', '#fa709a', '#fee140'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+
+            // Chart 3: Bénéfices vs Pertes
+            const ctx3 = document.getElementById('profitsChart').getContext('2d');
+            chartsInstances.profits = new Chart(ctx3, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        `Bénéfices (${profitsCount})`,
+                        `Pertes (${lossesCount})`
+                    ],
+                    datasets: [{
+                        data: [profitsSum, lossesSum],
+                        backgroundColor: ['#28a745', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
         }
 
         // ==================== UTILITIES ====================
