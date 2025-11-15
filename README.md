@@ -17,12 +17,16 @@ Une application web complète pour calculer les bénéfices et marges de vos pro
 - **Achats à l'étranger (UE)** : Gestion des achats intracommunautaires (Allemagne, Belgique, etc.) avec ou sans numéro intracommunautaire
 - **Ventes à l'étranger** : Support complet de l'OSS (One Stop Shop) pour les ventes dans l'UE
 
-### 📂 Import de fichiers CSV (NOUVEAU)
-- **Import automatique** : Importez vos fichiers d'achats et de ventes au format CSV
-- **Analyse globale** : Obtenez un résumé complet de toutes vos transactions
-- **Détail par commande** : Consultez le détail de chaque vente avec calcul de TVA et bénéfice
+### 📂 Import de fichiers (NOUVEAU)
+- **Support Excel (.xlsx)** : Importez vos fichiers d'achats au format Excel
+- **Multi-fichiers de ventes** : Importez plusieurs fichiers CSV de ventes Amazon simultanément
+- **Prévisualisation** : Aperçu des 5 premières lignes pour valider l'import
+- **Logique inversée** : Part des achats pour chercher les ventes correspondantes
+- **Analyse globale** : Résumé complet avec statistiques détaillées
+- **Séparation achats/ventes** : Visualisation claire avec sections distinctes
 - **Gestion des achats Allemagne** : Calcul automatique de l'autoliquidation de la TVA
 - **Commissions Amazon** : Prise en compte automatique des commissions avec TVA
+- **Statut de vente** : Identification des achats vendus et non vendus
 
 ## Utilisation
 
@@ -43,24 +47,30 @@ Une application web complète pour calculer les bénéfices et marges de vos pro
 6. **Pour une vente à l'étranger** : Cochez "Vente à l'étranger (UE)" et indiquez le taux de TVA du pays de destination
 7. Cliquez sur "Calculer les bénéfices"
 
-### Mode Import fichiers CSV
+### Mode Import fichiers
 
 1. Cliquez sur l'onglet "Import fichiers CSV"
-2. Importez votre fichier d'achats (format CSV de votre fournisseur)
-   - Le fichier doit contenir la colonne F "Montant d'origine" (montant HT)
-   - Et la colonne J "Réf CDE client" (référence de commande)
+2. **Importez votre fichier d'achats Excel (.xlsx)**
+   - Le fichier doit contenir :
+     - Colonne F "Montant d'origine" (montant HT)
+     - Colonne J "Réf CDE client" (référence de commande)
    - Les frais de port de 11€ HT seront automatiquement déduits
-3. Importez votre fichier de ventes Amazon (format CSV)
+3. **Importez un ou plusieurs fichiers de ventes Amazon (CSV)**
+   - Vous pouvez sélectionner plusieurs fichiers en même temps
    - Le fichier doit contenir les colonnes :
      - C : Type de transaction
      - D : Numéro de la commande
      - F : Total des frais produit (HT)
      - H : Commissions Amazon (TTC)
      - I : TVA de la vente
-4. Cliquez sur "Analyser les fichiers"
-5. Consultez les résultats :
-   - Résumé global avec totaux
-   - Détail par commande avec calculs de TVA et bénéfices
+4. **Prévisualisez les données**
+   - Vérifiez les 5 premières lignes d'achats
+   - Visualisez les ventes correspondantes trouvées
+5. Cliquez sur "Analyser les fichiers"
+6. Consultez les résultats :
+   - **Résumé global** : Total achats, ventes trouvées, bénéfices, TVA
+   - **Section ACHATS** : Détail de tous les achats avec statut (vendu/non vendu)
+   - **Section VENTES** : Calculs détaillés pour chaque vente avec TVA et bénéfices
 
 ## Détails des calculs
 
@@ -104,6 +114,15 @@ Pour chaque commande, le système calcule :
 7. **Bénéfice net** = Vente HT - Achat HT - Frais port HT - Commission HT - TVA commission - TVA à reverser
 
 **Note importante** : Les calculs supposent un achat en Allemagne avec numéro intracommunautaire (autoliquidation de la TVA) et une vente en France.
+
+### Nouveautés de l'import
+
+**Logique inversée** : Le système part du fichier d'achats et cherche les ventes correspondantes. Cela permet de :
+- Identifier tous les achats, même non vendus
+- Suivre votre stock invendu
+- Avoir une vision complète de vos opérations
+
+**Multi-fichiers** : Importez plusieurs fichiers de ventes en une seule fois pour retrouver toutes les commandes correspondant à vos achats, même si elles sont réparties sur plusieurs périodes.
 
 ## Pays supportés pour les achats UE
 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculateur de Marges et Bénéfices</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -535,40 +536,79 @@
             <div class="card">
                 <div class="info">
                     <strong>ℹ️ Instructions d'import</strong><br>
-                    1. Importez d'abord votre fichier d'achats (fournisseur allemand)<br>
-                    2. Ensuite, importez votre fichier de ventes Amazon<br>
-                    3. Les données seront automatiquement croisées par numéro de commande
+                    1. Importez d'abord votre fichier d'achats au format Excel (.xlsx)<br>
+                    2. Ensuite, importez un ou plusieurs fichiers de ventes Amazon (CSV)<br>
+                    3. Le système cherchera automatiquement les ventes correspondantes à chaque achat
                 </div>
 
-                <div class="section-title" style="margin-top: 0;">Fichier d'achats (Allemagne)</div>
+                <div class="section-title" style="margin-top: 0;">📦 Fichier d'achats (Allemagne - Excel)</div>
                 <div class="file-upload-area">
-                    <input type="file" id="purchaseFile" accept=".csv,.txt" style="display: none;">
+                    <input type="file" id="purchaseFile" accept=".xlsx,.xls" style="display: none;">
                     <button onclick="document.getElementById('purchaseFile').click()" style="width: auto; padding: 10px 30px;">
-                        Choisir le fichier d'achats
+                        Choisir le fichier Excel d'achats
                     </button>
                     <p id="purchaseFileName" style="margin-top: 10px; color: #666;"></p>
                 </div>
 
-                <div class="section-title">Fichier de ventes Amazon</div>
+                <div class="section-title">🛒 Fichiers de ventes Amazon (CSV)</div>
                 <div class="file-upload-area">
-                    <input type="file" id="salesFile" accept=".csv,.txt" style="display: none;">
-                    <button onclick="document.getElementById('salesFile').click()" style="width: auto; padding: 10px 30px;">
-                        Choisir le fichier de ventes
+                    <input type="file" id="salesFiles" accept=".csv,.txt" multiple style="display: none;">
+                    <button onclick="document.getElementById('salesFiles').click()" style="width: auto; padding: 10px 30px;">
+                        Choisir les fichiers CSV de ventes
                     </button>
-                    <p id="salesFileName" style="margin-top: 10px; color: #666;"></p>
+                    <p id="salesFileNames" style="margin-top: 10px; color: #666;"></p>
                 </div>
 
                 <button id="processFiles" onclick="processFiles()">Analyser les fichiers</button>
             </div>
 
+            <!-- Prévisualisation -->
+            <div class="card" id="previewSection" style="display: none;">
+                <h2>👁️ Prévisualisation (5 premières lignes)</h2>
+
+                <div class="section-title">Achats chargés</div>
+                <div id="purchasePreview" style="overflow-x: auto; margin-bottom: 20px;">
+                    <table id="purchasePreviewTable">
+                        <thead>
+                            <tr>
+                                <th>Réf Commande</th>
+                                <th>Montant HT</th>
+                                <th>Frais Port HT</th>
+                                <th>Total HT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchasePreviewBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="section-title">Ventes trouvées correspondantes</div>
+                <div id="salesPreview" style="overflow-x: auto;">
+                    <table id="salesPreviewTable">
+                        <thead>
+                            <tr>
+                                <th>Réf Commande</th>
+                                <th>Vente HT</th>
+                                <th>Commission TTC</th>
+                                <th>TVA Vente</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesPreviewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="card results" id="importResults" style="display: none;">
-                <h2>Résultats de l'analyse</h2>
+                <h2>📊 Résultats de l'analyse</h2>
 
                 <div class="summary-card">
                     <h3 style="margin-bottom: 20px; color: #667eea;">Résumé global</h3>
                     <div class="summary-grid">
                         <div class="summary-item">
-                            <div class="label">Commandes traitées</div>
+                            <div class="label">Achats traités</div>
+                            <div class="value" id="totalPurchaseOrders">0</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="label">Ventes trouvées</div>
                             <div class="value" id="totalOrders">0</div>
                         </div>
                         <div class="summary-item">
@@ -594,9 +634,31 @@
                     </div>
                 </div>
 
-                <div class="section-title">Détail par commande</div>
+                <div class="section-title" style="background: #fff3cd; padding: 10px; border-radius: 5px;">
+                    📦 ACHATS - Détail par commande
+                </div>
+                <div style="overflow-x: auto; margin-bottom: 30px;">
+                    <table id="purchasesDetailsTable">
+                        <thead>
+                            <tr>
+                                <th>N° Commande</th>
+                                <th>Achat HT</th>
+                                <th>Frais Port HT</th>
+                                <th>Total Achat HT</th>
+                                <th>TVA Autoliquidée</th>
+                                <th>Statut Vente</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchasesDetailsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="section-title" style="background: #d1ecf1; padding: 10px; border-radius: 5px;">
+                    🛒 VENTES - Détail par commande avec calculs
+                </div>
                 <div style="overflow-x: auto;">
-                    <table id="detailsTable">
+                    <table id="salesDetailsTable">
                         <thead>
                             <tr>
                                 <th>N° Commande</th>
@@ -609,7 +671,7 @@
                                 <th>Bénéfice net</th>
                             </tr>
                         </thead>
-                        <tbody id="detailsTableBody">
+                        <tbody id="salesDetailsBody">
                         </tbody>
                     </table>
                 </div>
@@ -808,49 +870,70 @@
             const file = e.target.files[0];
             if (file) {
                 document.getElementById('purchaseFileName').textContent = `✓ ${file.name}`;
-                readPurchaseFile(file);
+                readPurchaseExcelFile(file);
             }
         });
 
-        document.getElementById('salesFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('salesFileName').textContent = `✓ ${file.name}`;
-                readSalesFile(file);
+        document.getElementById('salesFiles').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const fileNames = Array.from(files).map(f => f.name).join(', ');
+                document.getElementById('salesFileNames').textContent = `✓ ${files.length} fichier(s): ${fileNames}`;
+                readSalesFiles(files);
             }
         });
 
-        function readPurchaseFile(file) {
+        function readPurchaseExcelFile(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const content = e.target.result;
-                parsePurchaseCSV(content);
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                // Lire la première feuille
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // Convertir en JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+                parsePurchaseExcel(jsonData);
+                showPreview();
             };
-            reader.readAsText(file);
+            reader.readAsArrayBuffer(file);
         }
 
-        function readSalesFile(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                parseSalesCSV(content);
-            };
-            reader.readAsText(file);
+        function readSalesFiles(files) {
+            salesData = [];
+            let filesProcessed = 0;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    parseSalesCSV(content);
+                    filesProcessed++;
+
+                    if (filesProcessed === files.length) {
+                        console.log(`Total ventes chargées depuis ${files.length} fichier(s):`, salesData.length);
+                        showPreview();
+                    }
+                };
+                reader.readAsText(file);
+            });
         }
 
-        function parsePurchaseCSV(content) {
-            const lines = content.split('\n');
+        function parsePurchaseExcel(data) {
             purchasesData = [];
 
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+            // Sauter la ligne d'en-tête (index 0)
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.length < 11) continue;
 
-                const columns = parseCSVLine(line);
-                if (columns.length < 11) continue;
-
-                const montantOrigine = parseFloat(columns[5].replace(',', '.')) || 0;
-                const refCdeClient = columns[9].trim();
+                // Colonne F (index 5) = Montant d'origine
+                // Colonne J (index 9) = Réf CDE client
+                const montantOrigine = parseFloat(row[5]) || 0;
+                const refCdeClient = row[9] ? String(row[9]).trim() : '';
 
                 if (refCdeClient && montantOrigine > 0) {
                     // Soustraire 11€ HT de frais de port
@@ -868,7 +951,6 @@
 
         function parseSalesCSV(content) {
             const lines = content.split('\n');
-            salesData = [];
 
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -877,24 +959,76 @@
                 const columns = parseCSVLine(line);
                 if (columns.length < 10) continue;
 
+                // Colonne C (index 2) = Type de transaction
                 const typeTransaction = columns[2].trim();
                 if (typeTransaction !== 'Paiement de la commande') continue;
 
+                // Colonne D (index 3) = Numéro de commande
+                // Colonne F (index 5) = Total des frais produit (HT)
+                // Colonne H (index 7) = Commissions Amazon (TTC)
+                // Colonne I (index 8) = TVA
                 const numCommande = columns[3].trim();
                 const totalFraisProduitHT = parseFloat(columns[5].replace(',', '.')) || 0;
                 const commissionTTC = Math.abs(parseFloat(columns[7].replace(',', '.')) || 0);
-                const tvavente = parseFloat(columns[8].replace(',', '.')) || 0;
+                const tvaVente = parseFloat(columns[8].replace(',', '.')) || 0;
 
                 if (numCommande && totalFraisProduitHT > 0) {
                     salesData.push({
                         refCommande: numCommande,
                         venteHT: totalFraisProduitHT,
                         commissionTTC: commissionTTC,
-                        tvaVente: tvavente
+                        tvaVente: tvaVente
                     });
                 }
             }
-            console.log('Ventes chargées:', salesData.length);
+        }
+
+        function showPreview() {
+            if (purchasesData.length === 0) return;
+
+            // Afficher la section de prévisualisation
+            document.getElementById('previewSection').style.display = 'block';
+
+            // Prévisualisation des achats (5 premières lignes)
+            const purchasePreviewBody = document.getElementById('purchasePreviewBody');
+            purchasePreviewBody.innerHTML = '';
+
+            const purchasePreview = purchasesData.slice(0, 5);
+            for (const purchase of purchasePreview) {
+                const row = purchasePreviewBody.insertRow();
+                row.innerHTML = `
+                    <td>${purchase.refCommande}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT)}</td>
+                    <td>${formatCurrency(purchase.fraisPortHT)}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT)}</td>
+                `;
+            }
+
+            // Prévisualisation des ventes trouvées correspondantes
+            const salesPreviewBody = document.getElementById('salesPreviewBody');
+            salesPreviewBody.innerHTML = '';
+
+            let foundCount = 0;
+            for (const purchase of purchasePreview) {
+                const sale = salesData.find(s => s.refCommande === purchase.refCommande);
+                if (sale) {
+                    const row = salesPreviewBody.insertRow();
+                    row.innerHTML = `
+                        <td>${sale.refCommande}</td>
+                        <td>${formatCurrency(sale.venteHT)}</td>
+                        <td>${formatCurrency(sale.commissionTTC)}</td>
+                        <td>${formatCurrency(sale.tvaVente)}</td>
+                    `;
+                    foundCount++;
+                }
+            }
+
+            if (foundCount === 0) {
+                const row = salesPreviewBody.insertRow();
+                row.innerHTML = '<td colspan="4" style="text-align: center; color: #dc3545;">Aucune vente correspondante trouvée dans les 5 premières commandes</td>';
+            }
+
+            document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function parseCSVLine(line) {
@@ -919,8 +1053,13 @@
         }
 
         function processFiles() {
-            if (purchasesData.length === 0 || salesData.length === 0) {
-                alert('Veuillez importer les deux fichiers avant de continuer.');
+            if (purchasesData.length === 0) {
+                alert('Veuillez importer le fichier d\'achats avant de continuer.');
+                return;
+            }
+
+            if (salesData.length === 0) {
+                alert('Veuillez importer au moins un fichier de ventes avant de continuer.');
                 return;
             }
 
@@ -931,11 +1070,11 @@
             let totalTvaToReturnSum = 0;
             let totalCommissionsSum = 0;
 
-            // Croiser les données
-            for (const sale of salesData) {
-                const purchase = purchasesData.find(p => p.refCommande === sale.refCommande);
+            // PARTIR DES ACHATS et chercher les ventes correspondantes
+            for (const purchase of purchasesData) {
+                const sale = salesData.find(s => s.refCommande === purchase.refCommande);
 
-                if (purchase) {
+                if (sale) {
                     // Calculs pour achat en Allemagne avec numéro intracommunautaire
                     const achatHT = purchase.prixAchatHT;
                     const fraisPortHT = purchase.fraisPortHT;
@@ -974,7 +1113,8 @@
                         tvaEncaissee: tvaEncaissee,
                         tvaDeductible: tvaDeductible,
                         tvaAReverser: tvaAReverser,
-                        beneficeNet: beneficeNet
+                        beneficeNet: beneficeNet,
+                        hasVente: true
                     });
 
                     totalRevenueSum += venteHT;
@@ -986,6 +1126,7 @@
             }
 
             // Affichage des résultats
+            document.getElementById('totalPurchaseOrders').textContent = purchasesData.length;
             document.getElementById('totalOrders').textContent = matchedOrders.length;
             document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenueSum);
             document.getElementById('totalPurchase').textContent = formatCurrency(totalPurchaseSum);
@@ -994,12 +1135,33 @@
             document.getElementById('totalTvaToReturn').textContent = formatCurrency(totalTvaToReturnSum);
             document.getElementById('totalCommissions').textContent = formatCurrency(totalCommissionsSum);
 
-            // Remplir le tableau
-            const tbody = document.getElementById('detailsTableBody');
-            tbody.innerHTML = '';
+            // TABLEAU DES ACHATS
+            const purchasesBody = document.getElementById('purchasesDetailsBody');
+            purchasesBody.innerHTML = '';
+
+            for (const purchase of purchasesData) {
+                const sale = salesData.find(s => s.refCommande === purchase.refCommande);
+                const tvaAutoliquidee = (purchase.prixAchatHT + purchase.fraisPortHT) * 0.20;
+
+                const row = purchasesBody.insertRow();
+                row.innerHTML = `
+                    <td>${purchase.refCommande}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT)}</td>
+                    <td>${formatCurrency(purchase.fraisPortHT)}</td>
+                    <td>${formatCurrency(purchase.prixAchatHT + purchase.fraisPortHT)}</td>
+                    <td>${formatCurrency(tvaAutoliquidee)}</td>
+                    <td style="font-weight: 600; color: ${sale ? '#28a745' : '#dc3545'};">
+                        ${sale ? '✓ Vendue' : '✗ Non vendue'}
+                    </td>
+                `;
+            }
+
+            // TABLEAU DES VENTES (seulement les vendues)
+            const salesBody = document.getElementById('salesDetailsBody');
+            salesBody.innerHTML = '';
 
             for (const order of matchedOrders) {
-                const row = tbody.insertRow();
+                const row = salesBody.insertRow();
                 row.innerHTML = `
                     <td>${order.refCommande}</td>
                     <td>${formatCurrency(order.achatHT + order.fraisPortHT)}</td>
