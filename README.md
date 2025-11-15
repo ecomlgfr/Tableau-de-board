@@ -1,6 +1,6 @@
 # Calculateur de Marges et Bénéfices
 
-Une application web simple et complète pour calculer les bénéfices et marges de vos produits revendus sur internet.
+Une application web complète pour calculer les bénéfices et marges de vos produits revendus sur internet, avec import automatique de fichiers CSV.
 
 ## Fonctionnalités
 
@@ -17,21 +17,50 @@ Une application web simple et complète pour calculer les bénéfices et marges 
 - **Achats à l'étranger (UE)** : Gestion des achats intracommunautaires (Allemagne, Belgique, etc.) avec ou sans numéro intracommunautaire
 - **Ventes à l'étranger** : Support complet de l'OSS (One Stop Shop) pour les ventes dans l'UE
 
+### 📂 Import de fichiers CSV (NOUVEAU)
+- **Import automatique** : Importez vos fichiers d'achats et de ventes au format CSV
+- **Analyse globale** : Obtenez un résumé complet de toutes vos transactions
+- **Détail par commande** : Consultez le détail de chaque vente avec calcul de TVA et bénéfice
+- **Gestion des achats Allemagne** : Calcul automatique de l'autoliquidation de la TVA
+- **Commissions Amazon** : Prise en compte automatique des commissions avec TVA
+
 ## Utilisation
 
+### Mode Calculateur manuel
+
 1. Ouvrez le fichier `index.html` dans votre navigateur web
-2. **Si vous achetez à l'étranger** : Cochez "Achat à l'étranger (UE)" et sélectionnez :
+2. Restez sur l'onglet "Calculateur manuel"
+3. **Si vous achetez à l'étranger** : Cochez "Achat à l'étranger (UE)" et sélectionnez :
    - Le pays d'achat (Allemagne, Belgique, Espagne, etc.)
    - Si vous avez un numéro intracommunautaire ou non
-3. Remplissez les champs obligatoires :
+4. Remplissez les champs obligatoires :
    - Prix d'achat HT
    - Prix de vente TTC
-4. Ajustez les paramètres selon vos besoins :
+5. Ajustez les paramètres selon vos besoins :
    - Taux de TVA (mis à jour automatiquement selon le pays)
    - Commissions marketplace (€ ou %)
    - Frais de port (€ ou %)
-5. **Pour une vente à l'étranger** : Cochez "Vente à l'étranger (UE)" et indiquez le taux de TVA du pays de destination
-6. Cliquez sur "Calculer les bénéfices"
+6. **Pour une vente à l'étranger** : Cochez "Vente à l'étranger (UE)" et indiquez le taux de TVA du pays de destination
+7. Cliquez sur "Calculer les bénéfices"
+
+### Mode Import fichiers CSV
+
+1. Cliquez sur l'onglet "Import fichiers CSV"
+2. Importez votre fichier d'achats (format CSV de votre fournisseur)
+   - Le fichier doit contenir la colonne F "Montant d'origine" (montant HT)
+   - Et la colonne J "Réf CDE client" (référence de commande)
+   - Les frais de port de 11€ HT seront automatiquement déduits
+3. Importez votre fichier de ventes Amazon (format CSV)
+   - Le fichier doit contenir les colonnes :
+     - C : Type de transaction
+     - D : Numéro de la commande
+     - F : Total des frais produit (HT)
+     - H : Commissions Amazon (TTC)
+     - I : TVA de la vente
+4. Cliquez sur "Analyser les fichiers"
+5. Consultez les résultats :
+   - Résumé global avec totaux
+   - Détail par commande avec calculs de TVA et bénéfices
 
 ## Détails des calculs
 
@@ -61,6 +90,20 @@ Une application web simple et complète pour calculer les bénéfices et marges 
 - La TVA du pays de destination s'applique
 - La TVA collectée doit être intégralement reversée au pays de destination via l'OSS
 - Le système calcule automatiquement la TVA selon le taux du pays de destination
+
+### Import CSV - Calculs automatiques
+
+Pour chaque commande, le système calcule :
+
+1. **Achat HT net** = Montant d'origine - 11€ (frais de port)
+2. **TVA autoliquidée** = (Achat HT + Frais port HT) × 20%
+3. **TVA déductible** = TVA autoliquidée (car achat intracommunautaire)
+4. **Commission HT** = Commission TTC / 1.20
+5. **TVA sur commission** = Commission TTC - Commission HT
+6. **TVA à reverser** = TVA encaissée - TVA déductible
+7. **Bénéfice net** = Vente HT - Achat HT - Frais port HT - Commission HT - TVA commission - TVA à reverser
+
+**Note importante** : Les calculs supposent un achat en Allemagne avec numéro intracommunautaire (autoliquidation de la TVA) et une vente en France.
 
 ## Pays supportés pour les achats UE
 
